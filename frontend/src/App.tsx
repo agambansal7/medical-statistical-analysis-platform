@@ -4,7 +4,7 @@ import { sessionApi, exportApi } from './services/api';
 import Layout from './components/Layout';
 import DataPanel from './components/DataPanel';
 import ChatPanel from './components/ChatPanel';
-import ResultsPanel from './components/ResultsPanel';
+import StreamlinedResultsPanel from './components/StreamlinedResultsPanel';
 import AnalysisWizard from './components/AnalysisWizard';
 import ExportPanel from './components/ExportPanel';
 import toast, { Toaster } from 'react-hot-toast';
@@ -94,8 +94,7 @@ function App() {
           {/* Left Panel - Data & Analysis */}
           <div className="w-1/2 min-w-0 border-r border-slate-800/50 overflow-auto bg-slate-950/50">
             {activeTab === 'data' && <DataPanel />}
-            {activeTab === 'results' && <ResultsPanel />}
-            {activeTab === 'visualizations' && <ResultsPanel showVisualizations />}
+            {activeTab === 'results' && <StreamlinedResultsPanel />}
           </div>
 
           {/* Right Panel - Chat */}

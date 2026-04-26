@@ -3,7 +3,6 @@ import { useStore } from '../hooks/useStore';
 import {
   Database,
   FileText,
-  Image,
   Settings,
   HelpCircle,
   ChevronRight,
@@ -25,8 +24,7 @@ export default function Layout({ children }: LayoutProps) {
 
   const tabs = [
     { id: 'data' as const, label: 'Data', icon: Database, description: 'Upload & explore data' },
-    { id: 'results' as const, label: 'Results', icon: FileText, description: 'View analysis results' },
-    { id: 'visualizations' as const, label: 'Visualizations', icon: Image, description: 'Charts & plots' },
+    { id: 'results' as const, label: 'Results', icon: FileText, description: 'Analysis results & plots' },
   ];
 
   return (

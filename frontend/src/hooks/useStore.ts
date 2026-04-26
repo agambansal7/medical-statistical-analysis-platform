@@ -53,8 +53,8 @@ interface AppState {
   clearChat: () => void;
 
   // UI State
-  activeTab: 'data' | 'analysis' | 'results' | 'visualizations';
-  setActiveTab: (tab: 'data' | 'analysis' | 'results' | 'visualizations') => void;
+  activeTab: 'data' | 'results';
+  setActiveTab: (tab: 'data' | 'results') => void;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
   showWizard: boolean;
