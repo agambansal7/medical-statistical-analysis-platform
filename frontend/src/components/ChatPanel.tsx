@@ -1,26 +1,23 @@
 import { useState, useRef, useEffect } from 'react';
 import { useStore } from '../hooks/useStore';
-import { chatApi, PlanModifications } from '../services/api';
+import { chatApi } from '../services/api';
 import {
   Send,
   Bot,
   User,
   Loader2,
   Sparkles,
-  CheckCircle,
-  AlertTriangle,
-  Edit2,
   X,
-  Settings,
   Zap,
   ArrowRight,
   Brain,
   FlaskConical,
   Wand2,
+  FileText,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
-import ConfounderSelector from './ConfounderSelector';
+import AnalysisPlanView from './AnalysisPlanView';
 import AnalysisProgress, { type AnalysisStep } from './AnalysisProgress';
 import QuickActionBar from './QuickActionBar';
 
@@ -33,24 +30,12 @@ export default function ChatPanel() {
     analysisPlan,
     setAnalysisPlan,
     setActiveTab,
-    addAnalysisResult,
-    clearAnalysisResults,
   } = useStore();
 
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [editingMappings, setEditingMappings] = useState<Record<string, string>>({});
-  const [excludedAnalyses, setExcludedAnalyses] = useState<Set<string>>(new Set());
-  const [showConfounderSelector, setShowConfounderSelector] = useState(false);
-  const [confounderConfig, setConfounderConfig] = useState<{
-    outcome: string;
-    outcomeType: 'binary' | 'continuous' | 'survival';
-    mainPredictor?: string;
-    timeCol?: string;
-    eventCol?: string;
-  } | null>(null);
-  const [analysisProgress, setAnalysisProgress] = useState<AnalysisStep[]>([]);
+  const [showPlanView, setShowPlanView] = useState(false);
+  const [analysisProgress] = useState<AnalysisStep[]>([]);
   const [isAnalysisRunning, setIsAnalysisRunning] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -63,131 +48,30 @@ export default function ChatPanel() {
     scrollToBottom();
   }, [chatMessages]);
 
-  const getAdjustedAnalysisFromPlan = () => {
-    if (!analysisPlan) return null;
+  const handlePlanExecutionComplete = (results: any[]) => {
+    const successCount = results.filter(r => !r.error).length;
+    const failCount = results.filter(r => r.error).length;
 
-    const allAnalyses = [
-      ...(analysisPlan.primary_analyses || []),
-      ...(analysisPlan.secondary_analyses || [])
-    ];
-
-    for (const analysis of allAnalyses) {
-      const testName = analysis.test_name?.toLowerCase() || '';
-      const apiCall = analysis.api_call || {};
-      const params = apiCall.parameters || {};
-
-      if (testName.includes('logistic') || apiCall.analysis_type === 'logistic_regression') {
-        return {
-          type: 'logistic_regression' as const,
-          outcome: params.outcome || params.dependent || '',
-          outcomeType: 'binary' as const,
-          mainPredictor: params.predictor || params.group || '',
-        };
-      }
-
-      if (testName.includes('cox') || apiCall.analysis_type === 'cox_regression') {
-        return {
-          type: 'cox_regression' as const,
-          outcome: '',
-          outcomeType: 'survival' as const,
-          mainPredictor: params.predictor || params.group || '',
-          timeCol: params.time || params.time_col || '',
-          eventCol: params.event || params.event_col || '',
-        };
-      }
-    }
-
-    return null;
-  };
-
-  const openConfounderSelector = () => {
-    const adjusted = getAdjustedAnalysisFromPlan();
-    if (adjusted) {
-      setConfounderConfig({
-        outcome: adjusted.outcome,
-        outcomeType: adjusted.outcomeType,
-        mainPredictor: adjusted.mainPredictor,
-        timeCol: adjusted.type === 'cox_regression' ? adjusted.timeCol : undefined,
-        eventCol: adjusted.type === 'cox_regression' ? adjusted.eventCol : undefined,
-      });
-      setShowConfounderSelector(true);
-    } else {
-      toast.error('No adjusted analysis found in plan');
-    }
-  };
-
-  const handleConfounderAnalysisComplete = (result: any) => {
-    setShowConfounderSelector(false);
-    if (result.success) {
-      addAnalysisResult(result as any);
-      setActiveTab('results');
-      addChatMessage({
-        role: 'assistant',
-        content: `Adjusted analysis completed with your selected confounders. View the results in the Results tab.`,
-        timestamp: new Date().toISOString(),
-      });
-    }
-  };
-
-  const runAnalysesWithProgress = async (analyses: Array<{ test_name: string; rationale?: string }>) => {
-    if (!sessionId) return;
-
-    // Initialize progress steps
-    const steps: AnalysisStep[] = analyses.map((a, i) => ({
-      id: String(i),
-      name: a.test_name,
-      status: 'pending' as const,
-    }));
-    setAnalysisProgress(steps);
-    setIsAnalysisRunning(true);
-
-    const startTime = Date.now();
-
-    for (let i = 0; i < analyses.length; i++) {
-      // Update current step to running
-      setAnalysisProgress(prev =>
-        prev.map((s, idx) => (idx === i ? { ...s, status: 'running' } : s))
-      );
-
-      const stepStart = Date.now();
-
-      try {
-        const result = await chatApi.executePlan(sessionId, [analyses[i].test_name]);
-
-        const duration = (Date.now() - stepStart) / 1000;
-
-        if (result.success && result.results?.[0]?.result?.success) {
-          addAnalysisResult(result.results[0].result);
-          setAnalysisProgress(prev =>
-            prev.map((s, idx) => (idx === i ? { ...s, status: 'completed', duration } : s))
-          );
-        } else {
-          setAnalysisProgress(prev =>
-            prev.map((s, idx) =>
-              idx === i
-                ? { ...s, status: 'failed', error: result.errors?.[0]?.error || 'Analysis failed', duration }
-                : s
-            )
-          );
-        }
-      } catch (error: any) {
-        const duration = (Date.now() - stepStart) / 1000;
-        setAnalysisProgress(prev =>
-          prev.map((s, idx) =>
-            idx === i ? { ...s, status: 'failed', error: error.message || 'Error', duration } : s
-          )
-        );
-      }
-    }
-
-    setIsAnalysisRunning(false);
-
-    const completedCount = analysisProgress.filter(s => s.status === 'completed').length;
-    toast.success(`Completed ${completedCount} of ${analyses.length} analyses`);
+    setShowPlanView(false);
     setActiveTab('results');
+
+    addChatMessage({
+      role: 'assistant',
+      content: `Analysis complete! ${successCount} analyses completed successfully${failCount > 0 ? `, ${failCount} failed` : ''}. View the results in the Results tab.`,
+      timestamp: new Date().toISOString(),
+    });
   };
 
-  const handleQuickAction = (actionId: string, analysisType?: string) => {
+  const handlePlanCancel = () => {
+    setShowPlanView(false);
+  };
+
+  const handlePlanConfirm = () => {
+    // User wants to modify the plan - keep the view open
+    toast('You can modify analyses by expanding them and adjusting settings');
+  };
+
+  const handleQuickAction = (actionId: string, _analysisType?: string) => {
     if (!sessionId || !dataProfile) return;
 
     // Map quick actions to chat prompts
@@ -254,8 +138,6 @@ export default function ChatPanel() {
         if (response.success && response.plan) {
           setAnalysisPlan(response.plan);
 
-          const requiresConfirmation = response.require_confirmation || response.plan.require_confirmation;
-
           let planSummary = `I've analyzed your research question and created an analysis plan:
 
 **Research Type:** ${response.plan.research_type}
@@ -285,18 +167,11 @@ ${response.plan.variable_warnings.map((w: string) => `- ${w}`).join('\n')}`;
 
 **Recommended Visualizations:** ${response.plan.visualizations.join(', ')}`;
 
-          if (requiresConfirmation) {
-            planSummary += `
+          // Always show the plan view for review
+          planSummary += `
 
-**Please review and confirm this plan before execution.** Click "Review & Confirm Plan" below to proceed.`;
-            setShowConfirmation(true);
-            setEditingMappings(response.plan.variable_mappings || {});
-            setExcludedAnalyses(new Set());
-          } else {
-            planSummary += `
-
-Would you like me to run these analyses? Just say "run the analyses" or select specific ones.`;
-          }
+**Review the analysis plan below.** You can adjust confounder settings for each regression analysis and run them individually or all at once.`;
+          setShowPlanView(true);
 
           addChatMessage({
             role: 'assistant',
@@ -457,273 +332,66 @@ Would you like me to run these analyses? Just say "run the analyses" or select s
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Plan Confirmation Dialog */}
-      {showConfirmation && analysisPlan && (
-        <div className="border-t border-slate-700/50 bg-gradient-to-b from-amber-500/10 to-amber-500/5 px-6 py-4 max-h-80 overflow-y-auto">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
-                <AlertTriangle className="w-4 h-4 text-amber-400" />
-              </div>
-              <span className="font-semibold text-slate-100">Review Analysis Plan</span>
-            </div>
-            <button
-              onClick={() => setShowConfirmation(false)}
-              className="p-1 hover:bg-slate-800 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5 text-slate-400" />
-            </button>
-          </div>
-
-          {analysisPlan.variable_warnings && analysisPlan.variable_warnings.length > 0 && (
-            <div className="mb-4 p-3 rounded-xl bg-slate-800/50 border border-slate-700/50">
-              <h4 className="text-sm font-medium text-slate-300 mb-2">Variable Mappings</h4>
-              <div className="space-y-2">
-                {analysisPlan.variable_warnings.map((warning, i) => (
-                  <div key={i} className="flex items-center text-sm">
-                    {warning.includes('not found') ? (
-                      <AlertTriangle className="w-4 h-4 text-red-400 mr-2 flex-shrink-0" />
-                    ) : (
-                      <CheckCircle className="w-4 h-4 text-emerald-400 mr-2 flex-shrink-0" />
-                    )}
-                    <span className={warning.includes('not found') ? 'text-red-300' : 'text-slate-300'}>
-                      {warning}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="mb-4">
-            <h4 className="text-sm font-medium text-slate-300 mb-3">Analyses to Run</h4>
-            <div className="space-y-2">
-              {analysisPlan.primary_analyses.map((analysis, i) => (
-                <label key={i} className="flex items-start gap-3 p-3 rounded-xl bg-slate-800/30 hover:bg-slate-800/50 cursor-pointer transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={!excludedAnalyses.has(analysis.test_name)}
-                    onChange={(e) => {
-                      const newExcluded = new Set(excludedAnalyses);
-                      if (e.target.checked) {
-                        newExcluded.delete(analysis.test_name);
-                      } else {
-                        newExcluded.add(analysis.test_name);
-                      }
-                      setExcludedAnalyses(newExcluded);
-                    }}
-                    className="mt-1 rounded border-slate-600 bg-slate-700 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-900"
-                  />
-                  <div>
-                    <span className="font-medium text-slate-200">{analysis.test_name}</span>
-                    <p className="text-sm text-slate-400 mt-0.5">{analysis.rationale}</p>
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end space-x-3">
-            <button
-              onClick={() => setShowConfirmation(false)}
-              className="btn-secondary text-sm"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={async () => {
-                if (!sessionId) return;
-                setIsLoading(true);
-                try {
-                  const modifications: PlanModifications = {};
-                  if (excludedAnalyses.size > 0) {
-                    modifications.exclude_analyses = Array.from(excludedAnalyses);
-                  }
-                  if (Object.keys(editingMappings).length > 0) {
-                    modifications.variable_mappings = editingMappings;
-                  }
-
-                  // First confirm the plan
-                  await chatApi.confirmPlan(sessionId, Object.keys(modifications).length > 0 ? modifications : undefined);
-
-                  // Check if plan has adjusted analyses (logistic/cox regression)
-                  const adjustedConfig = getAdjustedAnalysisFromPlan();
-
-                  if (adjustedConfig) {
-                    // Show confounder selector instead of running immediately
-                    setConfounderConfig({
-                      outcome: adjustedConfig.outcome,
-                      outcomeType: adjustedConfig.outcomeType,
-                      mainPredictor: adjustedConfig.mainPredictor,
-                      timeCol: adjustedConfig.type === 'cox_regression' ? adjustedConfig.timeCol : undefined,
-                      eventCol: adjustedConfig.type === 'cox_regression' ? adjustedConfig.eventCol : undefined,
-                    });
-                    setShowConfirmation(false);
-                    setShowConfounderSelector(true);
-
-                    addChatMessage({
-                      role: 'assistant',
-                      content: `Plan confirmed! Before running adjusted analyses, please select which variables to include as confounders. Review the univariate p-values to help guide your selection.`,
-                      timestamp: new Date().toISOString(),
-                    });
-
-                    // Run non-adjusted analyses first (Table 1, chi-square, etc.)
-                    const nonAdjustedAnalyses = analysisPlan?.primary_analyses.filter(a => {
-                      const type = a.api_call?.analysis_type?.toLowerCase() || '';
-                      return !type.includes('logistic') && !type.includes('cox') && !type.includes('regression');
-                    }).map(a => a.test_name) || [];
-
-                    if (nonAdjustedAnalyses.length > 0) {
-                      const result = await chatApi.executePlan(sessionId, nonAdjustedAnalyses);
-                      if (result.results) {
-                        result.results.forEach((r: any) => {
-                          if (r.result?.success) {
-                            addAnalysisResult(r.result);
-                          }
-                        });
-                      }
-                    }
-                  } else {
-                    // No adjusted analyses - run everything
-                    const result = await chatApi.executePlan(sessionId);
-
-                    if (result.success || result.n_executed > 0) {
-                      toast.success(`${result.n_executed} analyses completed!`);
-                      addChatMessage({
-                        role: 'assistant',
-                        content: result.message,
-                        timestamp: new Date().toISOString(),
-                      });
-
-                      if (result.results) {
-                        clearAnalysisResults();
-                        result.results.forEach((r: any) => {
-                          if (r.result?.success) {
-                            addAnalysisResult(r.result);
-                          }
-                        });
-                      }
-
-                      setActiveTab('results');
-                    } else {
-                      toast.error(result.message || 'Some analyses failed');
-                    }
-
-                    setShowConfirmation(false);
-                  }
-                } catch (error: any) {
-                  toast.error(error.response?.data?.detail || 'Failed to execute analyses');
-                }
-                setIsLoading(false);
-              }}
-              disabled={isLoading}
-              className="btn-primary text-sm flex items-center gap-2"
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <CheckCircle className="w-4 h-4" />
-              )}
-              <span>{getAdjustedAnalysisFromPlan() ? 'Confirm & Select Confounders' : 'Confirm & Execute'}</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Confounder Selector */}
-      {showConfounderSelector && confounderConfig && sessionId && (
-        <div className="border-t border-slate-700/50 bg-slate-900 px-6 py-4 max-h-[60vh] overflow-y-auto">
-          <ConfounderSelector
-            outcome={confounderConfig.outcome}
-            outcomeType={confounderConfig.outcomeType}
-            mainPredictor={confounderConfig.mainPredictor}
-            timeCol={confounderConfig.timeCol}
-            eventCol={confounderConfig.eventCol}
-            onAnalysisComplete={handleConfounderAnalysisComplete}
-            onClose={() => setShowConfounderSelector(false)}
+      {/* Integrated Analysis Plan View */}
+      {showPlanView && analysisPlan && sessionId && (
+        <div className="border-t border-slate-700/50 bg-slate-900/50 backdrop-blur-sm max-h-[70vh] overflow-y-auto">
+          <AnalysisPlanView
+            plan={{
+              research_question: analysisPlan.research_question || '',
+              research_type: analysisPlan.research_type || 'COMPARISON',
+              primary_analyses: analysisPlan.primary_analyses.map((a: any, i: number) => ({
+                id: a.id || `primary_${i}`,
+                test_name: a.test_name,
+                analysis_type: a.api_call?.analysis_type || 'unknown',
+                rationale: a.rationale || '',
+                outcome: a.api_call?.parameters?.outcome || a.api_call?.parameters?.dependent,
+                outcome_type: a.api_call?.parameters?.outcome_type || 'binary',
+                predictor: a.api_call?.parameters?.predictor || a.api_call?.parameters?.group,
+                time_col: a.api_call?.parameters?.time || a.api_call?.parameters?.time_col,
+                event_col: a.api_call?.parameters?.event || a.api_call?.parameters?.event_col,
+                parameters: a.api_call?.parameters,
+                requires_adjustment: ['logistic_regression', 'cox_regression', 'linear_regression'].includes(
+                  a.api_call?.analysis_type || ''
+                ),
+              })),
+              secondary_analyses: (analysisPlan.secondary_analyses || []).map((a: any, i: number) => ({
+                id: a.id || `secondary_${i}`,
+                test_name: a.test_name,
+                analysis_type: a.api_call?.analysis_type || 'unknown',
+                rationale: a.rationale || '',
+                outcome: a.api_call?.parameters?.outcome,
+                outcome_type: a.api_call?.parameters?.outcome_type || 'binary',
+                predictor: a.api_call?.parameters?.predictor,
+                parameters: a.api_call?.parameters,
+                requires_adjustment: ['logistic_regression', 'cox_regression', 'linear_regression'].includes(
+                  a.api_call?.analysis_type || ''
+                ),
+              })),
+            }}
+            onConfirm={handlePlanConfirm}
+            onCancel={handlePlanCancel}
+            onExecutionComplete={handlePlanExecutionComplete}
           />
         </div>
       )}
 
-      {/* Analysis Plan Quick Actions */}
-      {analysisPlan && !showConfirmation && !showConfounderSelector && (
+      {/* Collapsed Plan Status Bar */}
+      {analysisPlan && !showPlanView && (
         <div className="border-t border-slate-700/50 bg-slate-900/50 backdrop-blur-sm px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
               <span className="text-sm text-slate-300">
-                Plan ready • {analysisPlan.primary_analyses.length} analyses
+                Analysis plan ready • {analysisPlan.primary_analyses.length} analyses
               </span>
-              {analysisPlan.confirmed && (
-                <span className="badge badge-green flex items-center gap-1">
-                  <CheckCircle className="w-3 h-3" />
-                  Confirmed
-                </span>
-              )}
             </div>
             <div className="flex items-center gap-2">
-              {analysisPlan.require_confirmation && !analysisPlan.confirmed && (
-                <button
-                  onClick={() => {
-                    setShowConfirmation(true);
-                    setEditingMappings(analysisPlan.variable_mappings || {});
-                    setExcludedAnalyses(new Set());
-                  }}
-                  className="btn-secondary text-sm flex items-center gap-2"
-                >
-                  <Edit2 className="w-4 h-4" />
-                  <span>Review Plan</span>
-                </button>
-              )}
-              {getAdjustedAnalysisFromPlan() && (
-                <button
-                  onClick={openConfounderSelector}
-                  className="px-4 py-2 bg-purple-600/20 text-purple-300 border border-purple-500/30 rounded-xl text-sm font-medium hover:bg-purple-600/30 transition-colors flex items-center gap-2"
-                >
-                  <Settings className="w-4 h-4" />
-                  <span>Confounders</span>
-                </button>
-              )}
               <button
-                onClick={async () => {
-                  if (!sessionId) return;
-
-                  if (analysisPlan.require_confirmation && !analysisPlan.confirmed) {
-                    setShowConfirmation(true);
-                    return;
-                  }
-
-                  setIsLoading(true);
-                  try {
-                    const result = await chatApi.executePlan(sessionId);
-                    if (result.success || result.n_executed > 0) {
-                      toast.success(`${result.n_executed} analyses completed!`);
-
-                      if (result.results) {
-                        clearAnalysisResults();
-                        result.results.forEach((r: any) => {
-                          if (r.result?.success) {
-                            addAnalysisResult(r.result);
-                          }
-                        });
-                      }
-                    } else {
-                      toast.error(result.message || 'Some analyses failed');
-                    }
-                    setActiveTab('results');
-                  } catch (error: any) {
-                    toast.error(error.response?.data?.detail || 'Failed to execute analyses');
-                  }
-                  setIsLoading(false);
-                }}
-                disabled={isLoading}
-                className="btn-primary text-sm"
+                onClick={() => setShowPlanView(true)}
+                className="btn-secondary text-sm flex items-center gap-2"
               >
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  'Run All'
-                )}
+                <FileText className="w-4 h-4" />
+                <span>View Plan</span>
               </button>
             </div>
           </div>

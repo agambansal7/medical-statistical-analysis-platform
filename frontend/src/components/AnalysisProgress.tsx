@@ -123,7 +123,7 @@ export default function AnalysisProgress({ steps, isRunning, onCancel }: Analysi
 
       {/* Steps List */}
       <div className="p-4 space-y-2 max-h-64 overflow-y-auto">
-        {steps.map((step, index) => (
+        {steps.map((step, _index) => (
           <div
             key={step.id}
             className={clsx(

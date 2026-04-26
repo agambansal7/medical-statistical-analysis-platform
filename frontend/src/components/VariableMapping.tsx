@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   CheckCircle,
   AlertTriangle,
@@ -6,7 +6,6 @@ import {
   ChevronDown,
   Search,
   ArrowRight,
-  RefreshCw,
   Zap,
 } from 'lucide-react';
 import clsx from 'clsx';

@@ -12,8 +12,6 @@ import {
   TrendingUp,
   Hash,
   ToggleLeft,
-  Loader2,
-  X,
   RefreshCw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';

@@ -3,7 +3,6 @@ import { useStore } from '../hooks/useStore';
 import { analysisApi, vizApi, chatApi, codeApi } from '../services/api';
 import {
   FileText,
-  TrendingUp,
   Image,
   ChevronDown,
   ChevronRight,

@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '../hooks/useStore';
 import { chatApi } from '../services/api';
 import {
   CheckCircle,
   XCircle,
   Loader2,
-  AlertTriangle,
   ChevronDown,
   ChevronUp,
   Info,

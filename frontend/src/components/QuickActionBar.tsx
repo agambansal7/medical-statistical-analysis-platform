@@ -5,17 +5,11 @@ import {
   Activity,
   BarChart3,
   FileText,
-  Download,
-  Settings,
   Sparkles,
   ChevronRight,
   Users,
-  PieChart,
-  GitBranch,
-  Calculator,
 } from 'lucide-react';
 import clsx from 'clsx';
-import toast from 'react-hot-toast';
 
 interface QuickAction {
   id: string;
@@ -95,7 +89,7 @@ export default function QuickActionBar({
 }: QuickActionBarProps) {
   const [hoveredAction, setHoveredAction] = useState<string | null>(null);
 
-  const getColorClasses = (color: string, isHovered: boolean) => {
+  const getColorClasses = (color: string, _isHovered: boolean) => {
     const colors: Record<string, { bg: string; text: string; border: string; hover: string }> = {
       blue: {
         bg: 'bg-blue-500/10',

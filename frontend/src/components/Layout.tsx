@@ -1,18 +1,14 @@
 import { ReactNode, useState } from 'react';
 import { useStore } from '../hooks/useStore';
 import {
-  BarChart3,
   Database,
   FileText,
   Image,
   Settings,
   HelpCircle,
   ChevronRight,
-  Sparkles,
   Activity,
   FlaskConical,
-  Menu,
-  X,
   Download,
   Save,
   Wand2,

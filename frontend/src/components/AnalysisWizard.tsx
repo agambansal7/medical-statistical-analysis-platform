@@ -11,7 +11,6 @@ import {
   GitBranch,
   FileText,
   Sparkles,
-  Info,
   X,
 } from 'lucide-react';
 import clsx from 'clsx';

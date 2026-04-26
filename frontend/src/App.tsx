@@ -40,8 +40,8 @@ function App() {
   const handleWizardComplete = (config: any) => {
     setShowWizard(false);
     // Convert wizard config to a research question and send to chat
-    const question = `Analyze ${config.outcome} (${config.outcomeType}) comparing ${config.exposure} groups. Include ${config.analyses.join(', ')}.`;
-    // This would typically trigger the chat with the question
+    // Future: Send this to chat - `Analyze ${config.outcome} (${config.outcomeType}) comparing ${config.exposure} groups. Include ${config.analyses.join(', ')}.`
+    console.log('Wizard config:', config);
     toast.success('Analysis plan created!');
   };
 
