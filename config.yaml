@@ -1,0 +1,54 @@
+# Medical Statistical Analysis Platform Configuration
+
+# LLM Settings
+llm:
+  provider: "anthropic"
+  model: "claude-sonnet-4-20250514"
+  max_tokens: 4096
+  temperature: 0.1  # Low temperature for consistent statistical recommendations
+
+# Data Settings
+data:
+  max_file_size_mb: 100
+  supported_formats:
+    - csv
+    - xlsx
+    - xls
+  missing_value_indicators:
+    - ""
+    - "NA"
+    - "N/A"
+    - "null"
+    - "NULL"
+    - "."
+    - "-"
+    - "999"
+    - "-999"
+
+# Statistical Settings
+statistics:
+  significance_level: 0.05
+  confidence_level: 0.95
+  normality_test_threshold: 50  # Use Shapiro-Wilk if n < 50, else K-S
+  min_sample_size_parametric: 30
+  effect_size_thresholds:
+    small: 0.2
+    medium: 0.5
+    large: 0.8
+
+# Visualization Settings
+visualization:
+  default_style: "seaborn-v0_8-whitegrid"
+  figure_dpi: 300
+  figure_format: "png"
+  color_palette: "colorblind"
+  publication_ready: true
+
+# Output Settings
+output:
+  figures_dir: "outputs/figures"
+  reports_dir: "outputs/reports"
+  export_formats:
+    - png
+    - pdf
+    - svg

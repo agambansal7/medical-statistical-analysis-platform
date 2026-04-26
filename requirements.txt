@@ -1,0 +1,62 @@
+# Core Data Processing
+pandas>=2.0.0
+numpy>=1.24.0
+openpyxl>=3.1.0
+xlrd>=2.0.0
+
+# Statistical Analysis
+scipy>=1.11.0
+statsmodels>=0.14.0
+pingouin>=0.5.3
+scikit-learn>=1.3.0
+lifelines>=0.27.0
+scikit-posthocs>=0.7.0
+
+# Advanced Statistical Methods (v3.0)
+# - Longitudinal: GEE, mixed effects (uses statsmodels)
+# - Causal Inference: IV, RDD, DiD (uses statsmodels)
+# - Machine Learning: LASSO, Ridge, RF, GB (uses scikit-learn)
+# - Bayesian: Bayesian analysis (uses scipy)
+# - Mediation: Causal mediation (uses statsmodels)
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+plotly>=5.15.0
+kaleido>=0.2.1
+
+# LLM Integration
+anthropic>=0.18.0
+
+# Web Interface
+streamlit>=1.28.0
+streamlit-chat>=0.1.1
+fastapi>=0.104.0
+uvicorn>=0.24.0
+
+# Report Generation
+python-docx>=1.1.0
+fpdf2>=2.7.0
+jinja2>=3.1.0
+
+# Security & Encryption
+cryptography>=41.0.0
+
+# Performance & Caching
+# (Uses standard library: threading, concurrent.futures)
+
+# Utilities
+pyyaml>=6.0
+python-dotenv>=1.0.0
+pandera>=0.17.0
+tabulate>=0.9.0
+
+# REDCap Integration
+pycap>=2.1.0
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# Optional: Docker for reproducibility
+# docker>=6.1.0
